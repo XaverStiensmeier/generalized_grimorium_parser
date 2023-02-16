@@ -5,8 +5,11 @@ import re
 import pprint
 
 parser = argparse.ArgumentParser(description='Parse Grimorium style entries')
-parser.add_argument('-f', "--pdf_file", required=True, type=str, help="PDF File to read")
-parser.add_argument('-p', "--pages", required=True, nargs="+", type=int, help="Page to convert")
+parser.add_argument('-p', "--pages", default=[42], nargs="+", type=int, help="Page to convert")
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('-f', "--pdf_file", type=str, help="PDF File to read")
+group.add_argument('-t', "--txt_file", type=str, help="TXT File to read (ignores page)")
+
 
 args = parser.parse_args()
 
@@ -33,11 +36,15 @@ def get_entry(s, start, end):
                 result[i] = {name:body}
     return end_index, start, result
 
-with open(args.pdf_file, "rb") as f:
-    pdf = pdftotext.PDF(f)
+if args.pdf_file:
+    with open(args.pdf_file, "rb") as f:
+        pdf = pdftotext.PDF(f)
+else:
+    with open(args.txt_file, "r") as f:
+        pdf = {args.pages[0]: "".join(f.readlines())}
 
 for page in args.pages:
-    raw_text = pdf[page].replace("\n","",1)
+    raw_text = pdf[page].replace("\n","",2)
 
     spell = {"page": page}
 
