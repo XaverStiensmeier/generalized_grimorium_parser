@@ -3,9 +3,14 @@ import pdftotext
 import argparse
 import re
 import pprint
+import dark_aid_parser
+
+specific_parser = {"darkaid": dark_aid_parser.dark_aid_parse}
 
 parser = argparse.ArgumentParser(description='Parse Grimorium style entries')
 parser.add_argument('-p', "--pages", default=[42], nargs="+", type=int, help="Page to convert")
+parser.add_argument('-s', "--specific_parser", default="general", help="What specific parser to use")
+parser.add_argument('-c', '--clean', action="store_true", help="Removes all newlines")
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('-f', "--pdf_file", type=str, help="PDF File to read")
 group.add_argument('-t', "--txt_file", type=str, help="TXT File to read (ignores page)")
@@ -31,8 +36,12 @@ def get_entry(s, start, end):
                     print(el_list)
                     exit(0)
                 fw, ap = name[end_index:].strip("(FWAP)").split(",")
+                if args.clean:
+                    body = body.replace("\n", "")
                 result[i] = {just_name: {"FW": fw.strip(), "AP": ap.strip(), "description": body}}
             else:
+                if args.clean:
+                    body = body.replace("\n", "")
                 result[i] = {name:body}
     return end_index, start, result
 
@@ -102,8 +111,12 @@ for page in args.pages:
                     if end_index == -1: end_index = len(value)
                     qs_dict[qs] = value[start_index+len(qs_str):start_index+end_index].strip()
                     value = value[:start_index]+value[start_index+end_index:]
-                value = {"general": value.strip(), "qs": qs_dict}
-        
+                    if args.clean:
+                        value = value.replace("\n", "")
+                value = {"value": value.strip(), "qs": qs_dict}
         spell.update({key:value})
         start = end
-    pprint.pprint(spell, width=200, sort_dicts=False)
+    if args.specific_parser == "general":
+        pprint.pprint(spell, width=200, sort_dicts=False)
+    else:
+        pprint.pprint(specific_parser[args.specific_parser](spell))
