@@ -37,7 +37,7 @@ with open(args.pdf_file, "rb") as f:
     pdf = pdftotext.PDF(f)
 
 for page in args.pages:
-    raw_text = pdf[page].replace("\n\n","\n").replace("\n","",1)
+    raw_text = pdf[page].replace("\n","",1)
 
     spell = {"page": page}
 
@@ -52,6 +52,7 @@ for page in args.pages:
     raw_text = raw_text[end_index:]
 
     do_split = {"Probe": "/", "Verbreitung":","}
+    modifiables = ["Zauberdauer", "AsP-Kosten", "Reichweite"]
 
     # get rest
     start_index = 0
@@ -62,21 +63,40 @@ for page in args.pages:
         raw_text = raw_text[start_index:]
         if do_split.get(start):
             value = [elem.strip() for elem in value.split(do_split[start])]
-        if start == "AsP-Kosten":
-            value = value.replace("\n","")
-            pattern = r'^(\d+)\sAsP.*\+(\d+)\sAsP.*pro\s(\d+)\s(\w+)$'
+        else:
+            if start in modifiables:
+                modifiable_pattern = r'.*?(\(.*? nicht modifizierbar\))'
+                modifiable_match = re.search(modifiable_pattern, value)
+                if modifiable_match:
+                    value = value.replace(modifiable_match.group(1), "").strip()
+                if start == "AsP-Kosten":
+                    value = value.replace("\n","")
+                    asp_cost_pattern = r'^(\d+)\sAsP.*\+(\d+)\sAsP.*pro\s(\d+)\s(\w+)$'
 
-            match = re.search(pattern, value)
-            if match:
-                initial_asp_cost = match.group(1)
-                interval_asp_cost = match.group(2)
-                interval_time = match.group(3)
-                interval_unit = match.group(4)
-                value = {"initial_asp_cost": initial_asp_cost, "interval_asp_cost": interval_asp_cost, 
-                        "interval_time": interval_time, "interval_unit": interval_unit}
-            else:
-                value = {"initial_asp_cost": value.split(" ")[0], "interval_asp_cost": 0, 
-                        "interval_time": 0, "interval_unit": 0}
+                    asp_cost_match = re.search(asp_cost_pattern, value)
+                    if asp_cost_match:
+                        initial_asp_cost = asp_cost_match.group(1)
+                        interval_asp_cost = asp_cost_match.group(2)
+                        interval_time = asp_cost_match.group(3)
+                        interval_unit = asp_cost_match.group(4)
+                        value = {"initial_asp_cost": initial_asp_cost, "interval_asp_cost": interval_asp_cost, 
+                                "interval_time": interval_time, "interval_unit": interval_unit}
+                    else:
+                        value = {"initial_asp_cost": value.split(" ")[0], "interval_asp_cost": 0, 
+                                "interval_time": 0, "interval_unit": 0, "modifiable": not bool(modifiable_match)}
+                else:
+                    value = {"value": value, "modifiable":not bool(modifiable_match)}
+            elif start == "Wirkung":
+                qs_dict = {}
+                for qs in range(1,7):
+                    qs_str = f"QS {qs}:"
+                    start_index = value.find(qs_str)
+                    end_index = value[start_index:].find("\n")
+                    if end_index == -1: end_index = len(value)
+                    qs_dict[qs] = value[start_index+len(qs_str):start_index+end_index].strip()
+                    value = value[:start_index]+value[start_index+end_index:]
+                value = {"general": value.strip(), "qs": qs_dict}
+        
         spell.update({key:value})
         start = end
     pprint.pprint(spell, width=200, sort_dicts=False)
