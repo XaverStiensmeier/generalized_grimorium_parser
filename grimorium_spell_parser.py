@@ -24,25 +24,30 @@ def get_entry(s, start, end):
     result = s[s.find(start_dp)+len(start_dp):end_index].strip()
     if "#" in result:
         result = list(filter(None, result.split("#")))
+        result_dict = {}
         for i, elem in enumerate(result):
             end_index = elem.find(":")
             name = elem[:end_index]
             body = elem[end_index:].strip(": ")
             if "(FW" in name:
                 end_index = name.find("(")
-                just_name = name[:end_index]
+                just_name = name[:end_index].strip()
                 el_list = name[end_index:].strip("(FWAP)").split(",")
                 if len(el_list) > 2:
                     print(el_list)
                     exit(0)
                 fw, ap = name[end_index:].strip("(FWAP)").split(",")
-                if args.clean:
-                    body = body.replace("\n", "")
-                result[i] = {just_name: {"FW": fw.strip(), "AP": ap.strip(), "description": body}}
-            else:
-                if args.clean:
-                    body = body.replace("\n", "")
-                result[i] = {name:body}
+                prereq_pattern = r'.*?(Voraussetzung:.*?rung (.*?)\.)' # rung because sometimes string is split
+                prereq_match = re.search(prereq_pattern, body)
+                if prereq_match:
+                    prereq = sk_zk_match.group(2)
+                    body = body.replace(prereq_match.group(1), "")
+                    result_dict[just_name] = {"FW": fw.strip(), "AP": ap.strip(), "description": body.strip(), "prerequisites":[prereq.strip()]}    
+                else:
+                    result_dict[just_name] = {"FW": fw.strip(), "AP": ap.strip(), "description": body.strip()}
+                result = result_dict
+            else: # Fluff description
+                result_dict[name]:body
     return end_index, start, result
 
 if args.pdf_file:
@@ -61,7 +66,8 @@ for page in args.pages:
     end_index = raw_text.find("\n")
     spell["name"] = raw_text[:end_index].strip()
     raw_text = raw_text[end_index:]
-
+    if args.clean:
+        raw_text = raw_text.replace("\n", " ").replace("  ", " ").strip()
     # get description
     end_index = raw_text.find("Probe")
     spell["description"] = raw_text[:end_index].strip().replace("\n", " ")
@@ -123,16 +129,14 @@ for page in args.pages:
                         qs_str = f"QS {qs}:"
                         start_index = value.find(qs_str)
                         if start_index != -1:
-                            end_index = value[start_index:].find("\n")
+                            end_index = value[start_index:].find(f"QS {qs+1}:")
                             if end_index == -1: end_index = len(value)
                             qs_dict[qs] = value[start_index+len(qs_str):start_index+end_index].strip()
                             value = value[:start_index]+value[start_index+end_index:]
-                if args.clean:
-                    value = value.replace("\n", "")
                 value = {"value": value.strip(), "qs": qs_dict}
         spell.update({key:value})
         start = end
     if args.specific_parser == "general":
         pprint.pprint(spell, width=200, sort_dicts=False)
     else:
-        pprint.pprint(specific_parser[args.specific_parser](spell))
+        print(specific_parser[args.specific_parser](spell))
