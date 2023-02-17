@@ -67,8 +67,9 @@ for page in args.pages:
     spell["description"] = raw_text[:end_index].strip().replace("\n", " ")
     raw_text = raw_text[end_index:]
 
-    do_split = {"Probe": "/", "Verbreitung":","}
+    do_split = {"Verbreitung":",", "Zielkategorie": ","} # Probe has its own split
     modifiables = ["Zauberdauer", "AsP-Kosten", "Reichweite"]
+    unitable = ["Zauberdauer", "Reichweite"]
 
     # get rest
     start_index = 0
@@ -77,6 +78,14 @@ for page in args.pages:
                 "Verbreitung", "Steigerungsfaktor", "Zaubererweiterungen", "Geste und Formel", "Reversalis"]:
         start_index, key, value = get_entry(raw_text, start, end)
         raw_text = raw_text[start_index:]
+        if start == "Probe":
+                sk_zk_pattern = r'.*?(\(modifiziert um (.*?)\))'
+                sk_zk_match = re.search(sk_zk_pattern, value)
+                sk_or_zk = None
+                if sk_zk_match:
+                    sk_or_zk = sk_zk_match.group(2)
+                    value = value.replace(sk_zk_match.group(1), "")
+                value = {"value": [elem.strip() for elem in value.split("/")], "modifier": sk_or_zk}
         if do_split.get(start):
             value = [elem.strip() for elem in value.split(do_split[start])]
         else:
@@ -96,23 +105,30 @@ for page in args.pages:
                         interval_time = asp_cost_match.group(3)
                         interval_unit = asp_cost_match.group(4)
                         value = {"initial_asp_cost": initial_asp_cost, "interval_asp_cost": interval_asp_cost, 
-                                "interval_time": interval_time, "interval_unit": interval_unit}
+                                "interval_time": interval_time, "interval_time_unit": interval_unit, "modifiable": not bool(modifiable_match)}
                     else:
                         value = {"initial_asp_cost": value.split(" ")[0], "interval_asp_cost": 0, 
-                                "interval_time": 0, "interval_unit": 0, "modifiable": not bool(modifiable_match)}
+                                "interval_time": 0, "interval_time_unit": 0, "modifiable": not bool(modifiable_match)}
+                if start in unitable:
+                    value_split = value.split(" ")
+                    if len(value_split) < 2:
+                        value_split += [0]
+                    value = {"value": value_split[0], "unit": value_split[1], "modifiable":not bool(modifiable_match)}
                 else:
                     value = {"value": value, "modifiable":not bool(modifiable_match)}
             elif start == "Wirkung":
                 qs_dict = {}
-                for qs in range(1,7):
-                    qs_str = f"QS {qs}:"
-                    start_index = value.find(qs_str)
-                    end_index = value[start_index:].find("\n")
-                    if end_index == -1: end_index = len(value)
-                    qs_dict[qs] = value[start_index+len(qs_str):start_index+end_index].strip()
-                    value = value[:start_index]+value[start_index+end_index:]
-                    if args.clean:
-                        value = value.replace("\n", "")
+                if "QS 1:":
+                    for qs in range(1,7):
+                        qs_str = f"QS {qs}:"
+                        start_index = value.find(qs_str)
+                        if start_index != -1:
+                            end_index = value[start_index:].find("\n")
+                            if end_index == -1: end_index = len(value)
+                            qs_dict[qs] = value[start_index+len(qs_str):start_index+end_index].strip()
+                            value = value[:start_index]+value[start_index+end_index:]
+                if args.clean:
+                    value = value.replace("\n", "")
                 value = {"value": value.strip(), "qs": qs_dict}
         spell.update({key:value})
         start = end
