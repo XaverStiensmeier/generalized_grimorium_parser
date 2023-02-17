@@ -40,7 +40,7 @@ def get_entry(s, start, end):
                 prereq_pattern = r'.*?(Voraussetzung:.*?rung (.*?)\.)' # rung because sometimes string is split
                 prereq_match = re.search(prereq_pattern, body)
                 if prereq_match:
-                    prereq = sk_zk_match.group(2)
+                    prereq = prereq_match.group(2)
                     body = body.replace(prereq_match.group(1), "")
                     result_dict[just_name] = {"FW": fw.strip(), "AP": ap.strip(), "description": body.strip(), "prerequisites":[prereq.strip()]}    
                 else:
@@ -72,7 +72,6 @@ for page in args.pages:
     end_index = raw_text.find("Probe")
     spell["description"] = raw_text[:end_index].strip().replace("\n", " ")
     raw_text = raw_text[end_index:]
-
     do_split = {"Verbreitung":",", "Zielkategorie": ","} # Probe has its own split
     modifiables = ["Zauberdauer", "AsP-Kosten", "Reichweite"]
     unitable = ["Zauberdauer", "Reichweite"]
@@ -134,8 +133,13 @@ for page in args.pages:
                             qs_dict[qs] = value[start_index+len(qs_str):start_index+end_index].strip()
                             value = value[:start_index]+value[start_index+end_index:]
                 value = {"value": value.strip(), "qs": qs_dict}
-        spell.update({key:value})
+        spell[key] = value
         start = end
+    # Reversalis
+    start_index = raw_text.find("Reversalis:")
+    spell["reversalis"] = raw_text[start_index+len("Reversalis:"):].strip(" 1234567890\n")
+    if args.clean:
+        spell["reversalis"] = spell["reversalis"].replace("\n", "")
     if args.specific_parser == "general":
         pprint.pprint(spell, width=200, sort_dicts=False)
     else:
