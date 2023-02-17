@@ -60,8 +60,8 @@ def dark_aid_parse(general_dict):
     da_dict["range"] = reach.get(general_dict["Reichweite"]["value"],general_dict["Reichweite"]["value"]) + ("!" if not general_dict["Reichweite"]["modifiable"] else "")
     da_dict["rulesdescription"] = general_dict["Wirkung"]["value"] + ("\n" + "\n".join([f"QS {key}:{value}" for key,value in general_dict["Wirkung"]["qs"].items()]) if general_dict["Wirkung"]["qs"] else "")
     da_dict["reversalis"]=general_dict["reversalis"]
-    with open("sample.json", "w") as outfile:
-        outfile.write(json.dumps(da_dict, indent=4, ensure_ascii=False))
+    #with open("sample.json", "w") as outfile:
+    #    outfile.write(json.dumps(da_dict, indent=4, ensure_ascii=False))
     print(json.dumps({"id": da_dict["id"], "page": da_dict["page"]}, indent=4, ensure_ascii=False))
     print("\n\n ")
     return json.dumps(da_dict, indent=4, ensure_ascii=False)
