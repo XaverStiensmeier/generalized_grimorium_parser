@@ -81,7 +81,8 @@ for page in args.pages:
     start = "Probe"
     for end in ["Wirkung", "Zauberdauer", "AsP-Kosten", "Reichweite", "Wirkungsdauer", "Zielkategorie", "Merkmal", 
                 "Verbreitung", "Steigerungsfaktor", "Zaubererweiterungen", "Geste und Formel", "Reversalis"]:
-        start_index, key, value = get_entry(raw_text, start, end)
+        start_index, key, value = get_entry(raw_text, start+":", end+":")
+        key = key[:-1]
         raw_text = raw_text[start_index:]
         if start == "Probe":
                 sk_zk_pattern = r'.*?(\(modifiziert um (.*?)\))'
@@ -101,7 +102,7 @@ for page in args.pages:
                     value = value.replace(modifiable_match.group(1), "").strip()
                 if start == "AsP-Kosten":
                     value = value.replace("\n","")
-                    asp_cost_pattern = r'^(\d+)\sAsP.*\+.?(\d+)\sAsP.*pro\s(\d+)\s(\w+)$'
+                    asp_cost_pattern = r'^(\d+)\sAsP.*\+\s?(\d+)\sAsP.*pro\s(\d+)?\s?(\w+)$'
 
                     asp_cost_match = re.search(asp_cost_pattern, value)
                     if asp_cost_match:

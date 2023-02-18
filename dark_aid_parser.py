@@ -5,10 +5,10 @@ import re
 attributes = {"MU":"mut", "KL":"klugheit", "IN":"intuition", "CH":"charisma","FF":"fingerfertigkeit","KK":"körperkraft","KO":"konstitution", "GE":"gewandtheit"}
 durations = {"sofort":"immediate", "aufrechterhaltend":"sustaining"}
 reach = {"Berührung": "touch", "selbst": "self"}
-traditions = {"elfen": "elf", "hexen": "hexe"}
+traditions = {"elfen": "elf", "hexen": "hexe","allgemein":"alle"}
 
 def id(name):
-    return name.replace("(","").replace(")","").replace("ä","ae").replace("ö","oe").replace("ü", "ue").replace(" ", "").lower()
+    return name.replace("(","").replace(")","").replace("ä","ae").replace("ö","oe").replace("ü", "ue").replace("ß","ss").replace(" ", "").lower()
 
 def get_enhancements(enhancements):
     return_list = []
@@ -22,16 +22,18 @@ def get_duration_abbreviation(duration):
     bracket_match = re.search(bracket_pattern, duration)
     if bracket_match:
         duration = bracket_match.group(1)
+    duration = duration.split(",")[0]
     return duration.replace(" Minuten", "min").replace(" Stunden", "h").replace("Kampfrunden", "KR").replace("Jahr","a").replace("pro","/").replace(" ", "")
 
 def dark_aid_parse(general_dict):
     da_dict = {}
     if general_dict["AsP-Kosten"]["value"]["interval_asp_cost"]:
+        interval_time = general_dict['AsP-Kosten']['value']['interval_time']
         da_dict["castingcost"] = {
             "abbreviation": "%1+%2/5min",
             "cost": general_dict["AsP-Kosten"]["value"]["initial_asp_cost"],
             "costvariable": general_dict["AsP-Kosten"]["value"]["interval_asp_cost"],
-            "name": f"%1 %3 (Aktivierung des Zaubers) + %2 %3 pro {general_dict['AsP-Kosten']['value']['interval_time']} "
+            "name": f"%1 %3 (Aktivierung des Zaubers) + %2 %3 pro{' ' + interval_time if interval_time else ''} "
             f"{general_dict['AsP-Kosten']['value']['interval_time_unit']}"}
         if not general_dict["AsP-Kosten"]["modifiable"]:
             da_dict["castingcost"]["fixed"] = True
@@ -57,7 +59,10 @@ def dark_aid_parse(general_dict):
     da_dict["page"] = general_dict["page"]
     da_dict["property"] = id(general_dict["Merkmal"])
     da_dict["targets"] = [id(elem) for elem in general_dict["Zielkategorie"]]
-    da_dict["traditions"] = [traditions.get(elem.lower(), elem.lower()) for elem in general_dict["Verbreitung"]]
+    if general_dict["Verbreitung"][0].lower() == "allgemein":
+        da_dict["traditions"] = []
+    else:
+        da_dict["traditions"] = [traditions.get(elem.lower(), elem.lower()) for elem in general_dict["Verbreitung"]]
     da_dict["range"] = reach.get(general_dict["Reichweite"]["value"],general_dict["Reichweite"]["value"]) + ("!" if not general_dict["Reichweite"]["modifiable"] else "")
     da_dict["rulesdescription"] = general_dict["Wirkung"]["value"] + ("\n" + "\n".join([f"QS {key}:{value}" for key,value in general_dict["Wirkung"]["qs"].items()]) if general_dict["Wirkung"]["qs"] else "")
     da_dict["reversalis"]=general_dict["reversalis"]
