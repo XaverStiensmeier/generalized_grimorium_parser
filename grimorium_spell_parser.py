@@ -101,7 +101,7 @@ for page in args.pages:
                     value = value.replace(modifiable_match.group(1), "").strip()
                 if start == "AsP-Kosten":
                     value = value.replace("\n","")
-                    asp_cost_pattern = r'^(\d+)\sAsP.*\+(\d+)\sAsP.*pro\s(\d+)\s(\w+)$'
+                    asp_cost_pattern = r'^(\d+)\sAsP.*\+.?(\d+)\sAsP.*pro\s(\d+)\s(\w+)$'
 
                     asp_cost_match = re.search(asp_cost_pattern, value)
                     if asp_cost_match:

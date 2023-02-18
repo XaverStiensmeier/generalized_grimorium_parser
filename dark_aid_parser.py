@@ -44,8 +44,9 @@ def dark_aid_parse(general_dict):
     abbreviation = get_duration_abbreviation(duration)
     if abbreviation == duration:
         da_dict["duration"] = duration
-    da_dict["duration"] = {"abbreviation": get_duration_abbreviation(duration),
-                           "name":duration}
+    else:
+        da_dict["duration"] = {"abbreviation": get_duration_abbreviation(duration),
+                            "name":duration}
     
     da_dict["enhancements"] = get_enhancements(general_dict["Zaubererweiterungen"]) # [::2]
     da_dict["ic"] = general_dict["Steigerungsfaktor"].lower()
