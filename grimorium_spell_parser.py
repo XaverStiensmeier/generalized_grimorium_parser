@@ -11,12 +11,23 @@ parser = argparse.ArgumentParser(description='Parse Grimorium style entries')
 parser.add_argument('-p', "--pages", default=[42], nargs="+", type=int, help="Page to convert")
 parser.add_argument('-s', "--specific_parser", default="general", help="What specific parser to use")
 parser.add_argument('-c', '--clean', action="store_true", help="Removes all newlines")
+parser.add_argument('-r', '--rework', action="store_true", help="Saves txt for rework before parsing")
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('-f', "--pdf_file", type=str, help="PDF File to read")
 group.add_argument('-t', "--txt_file", type=str, help="TXT File to read (ignores page)")
 
 
 args = parser.parse_args()
+
+def rework(pdf, page):
+    additional = input("How many additional pages? 0 for just the selected one:") or 0
+    raw_text_pages = [pdf[selected_page] for selected_page in range(page,page+int(additional)+1)]
+    with open("rewrite_me.txt", "w+") as file:
+        file.writelines("".join(raw_text_pages))
+    input("Waiting for corrections. Enter anything:")
+    with open("rewrite_me.txt", "r") as file:
+        raw_text = "".join(file.readlines())
+    return raw_text
 
 def get_entry(s, start, end):
     start_dp = start + ":"
@@ -26,23 +37,23 @@ def get_entry(s, start, end):
         result = list(filter(None, result.split("#")))
         result_dict = {}
         for i, elem in enumerate(result):
-            end_index = elem.find(":")
-            name = elem[:end_index]
-            body = elem[end_index:].strip(": ")
+            end_index_hash = elem.find(":")
+            name = elem[:end_index_hash]
+            body = elem[end_index_hash:].strip(": ")
             if "(FW" in name:
-                end_index = name.find("(")
-                just_name = name[:end_index].strip()
-                el_list = name[end_index:].strip("(FWAP)").split(",")
+                end_index_hash = name.find("(")
+                just_name = name[:end_index_hash].strip()
+                el_list = name[end_index_hash:].strip("(FWAP)").split(",")
                 if len(el_list) > 2:
                     print(el_list)
                     exit(0)
-                fw, ap = name[end_index:].strip("(FWAP)").split(",")
+                fw, ap = name[end_index_hash:].strip("(FWAP)").split(",")
                 prereq_pattern = r'.*?(Voraussetzung:.*?rung (.*?)\.)' # rung because sometimes string is split
                 prereq_match = re.search(prereq_pattern, body)
                 if prereq_match:
                     prereq = prereq_match.group(2)
                     body = body.replace(prereq_match.group(1), "")
-                    result_dict[just_name] = {"FW": fw.strip(), "AP": ap.strip(), "description": body.strip(), "prerequisites":[prereq.strip()]}    
+                    result_dict[just_name] = {"FW": fw.strip(), "AP": ap.strip(), "description": body.strip(), "prerequisites":[prereq.strip()]}
                 else:
                     result_dict[just_name] = {"FW": fw.strip(), "AP": ap.strip(), "description": body.strip()}
                 result = result_dict
@@ -56,10 +67,12 @@ if args.pdf_file:
 else:
     with open(args.txt_file, "r") as f:
         pdf = {args.pages[0]: "".join(f.readlines())}
-
 for page in args.pages:
-    raw_text = pdf[page].replace("\n","",2)
-
+    if args.rework:
+        raw_text = rework(pdf,page)
+    else:
+        raw_text = pdf[page]
+    raw_text = raw_text.replace("\n","",2)
     spell = {"page": page}
 
     # get name
@@ -75,7 +88,6 @@ for page in args.pages:
     do_split = {"Verbreitung":",", "Zielkategorie": ","} # Probe has its own split
     modifiables = ["Zauberdauer", "AsP-Kosten", "Reichweite"]
     unitable = ["Zauberdauer", "Reichweite"]
-
     # get rest
     start_index = 0
     start = "Probe"

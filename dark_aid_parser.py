@@ -13,8 +13,11 @@ def id(name):
 def get_enhancements(enhancements):
     return_list = []
     for key, value in enhancements.items():
-        return_list.append({"id": id(key), "name":key,
-                            "rulesdescription": value["description"]})
+        enhancement = {"id": id(key), "name":key,
+                            "rulesdescription": value["description"]}
+        if value.get("prerequisites"):
+            enhancement["prerequisites"] = [id(elem) for elem in value["prerequisites"]]
+        return_list.append(enhancement)
     return return_list
 
 def get_duration_abbreviation(duration):
